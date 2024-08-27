@@ -1,0 +1,44 @@
+# Node modules
+node_modules/
+
+# Build output
+dist/
+build/
+out/
+
+# TypeScript output
+*.tsbuildinfo
+
+# Log files
+*.log
+
+# Environment variables
+*.env*
+
+# IDE/Editor files
+.vscode/
+*.swp
+*.swo
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# NPM package lock
+package-lock.json
+
+# Yarn lock file
+yarn.lock
+
+# Other build artifacts
+*.tmp
+*.bak
+
+# Coverage reports
+coverage/
+
+# Debug files
+*.log
+
+# Optional lock files
+*.lock
