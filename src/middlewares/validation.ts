@@ -76,10 +76,10 @@ export const validateMyRestaurantRequest = [
     handleValidationErrors,
 ]
 
-export const validateCity = [
-    param("city")
+export const validateParam = (paramName: string) => [
+    param(paramName)
         .isString()
         .trim()
         .notEmpty()
-        .withMessage("City parameter must be a valid string")
+        .withMessage(`${paramName} parameter must be a valid string`)
 ]
