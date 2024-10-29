@@ -22,7 +22,7 @@ export const jwtParse = async (req: Request, res: Response, next: NextFunction) 
     const { authorization } = req.headers
 
     if (!authorization || !authorization.startsWith("Bearer")) {
-        return res.status(401)
+        return res.status(401).json({ message: "Missing or malformed authorization header" })
     }
 
     // Bearer asdsdfsdgxcvxcvsefewfsdf (example)
@@ -35,14 +35,14 @@ export const jwtParse = async (req: Request, res: Response, next: NextFunction) 
         const user = await User.findOne({ auth0Id })
 
         if (!user) {
-            return res.sendStatus(401)
+            return res.sendStatus(401).json({ message: "User not found" })
         }
 
         req.auth0Id = auth0Id as string
         req.userId = user._id.toString()
         next()
     } catch (error) {
-        console.log(error)
-        return res.sendStatus(401)
+        console.error("Error parsing JWT:", error)
+        return res.sendStatus(401).json({ message: "Invalid token" })
     }
 }

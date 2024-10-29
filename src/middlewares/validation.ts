@@ -1,5 +1,5 @@
-import { NextFunction, Request, Response } from "express";
-import { body, param, validationResult } from "express-validator";
+import { NextFunction, Request, Response } from "express"
+import { body, param, validationResult } from "express-validator"
 
 const handleValidationErrors = async (req: Request, res: Response, next: NextFunction) => {
     const errors = validationResult(req)
@@ -11,23 +11,23 @@ const handleValidationErrors = async (req: Request, res: Response, next: NextFun
 
 export const validateMyUserRequest = [
     body("name")
+        .optional()
         .isString()
-        .notEmpty()
         .withMessage("Name must be a string"),
 
     body("addressLine1")
+        .optional()
         .isString()
-        .notEmpty()
         .withMessage("AddressLine1 must be a string"),
 
     body("country")
+        .optional()
         .isString()
-        .notEmpty()
         .withMessage("Country must be a string"),
 
     body("city")
+        .optional()
         .isString()
-        .notEmpty()
         .withMessage("City must be a string"),
 
     handleValidationErrors,
@@ -35,26 +35,32 @@ export const validateMyUserRequest = [
 
 export const validateMyRestaurantRequest = [
     body("restaurantName")
+        .optional()
         .notEmpty()
-        .withMessage("Restaurant name is required"),
+        .withMessage("Restaurant name must be a non-empty string"),
 
     body("city")
+        .optional()
         .notEmpty()
         .withMessage("City is required"),
 
     body("country")
+        .optional()
         .notEmpty()
         .withMessage("Country is required"),
 
     body("deliveryPrice")
+        .optional()
         .isFloat({ min: 0 })
-        .withMessage("Delivery price is required and must be a positive number"),
+        .withMessage("Delivery price must be a positive number"),
 
     body("estimatedDeliveryTime")
+        .optional()
         .isInt({ min: 0 })
         .withMessage("Estimated delivery time must be a positive integer"),
 
     body("cuisines")
+        .optional()
         .isArray()
         .withMessage("Cuisines must be an array")
         .not()
@@ -62,19 +68,23 @@ export const validateMyRestaurantRequest = [
         .withMessage("Cuisines array cannot be empty"),
 
     body("menuItems")
+        .optional()
         .isArray()
         .withMessage("Menu items must be an array"),
 
     body("menuItems.*.name")
+        .optional()
         .notEmpty()
         .withMessage("Menu item name is required"),
 
     body("menuItems.*.price")
+        .optional()
         .isFloat({ min: 0 })
-        .withMessage("Menu item price is required and must be positive number"),
+        .withMessage("Menu item price must be a positive number"),
 
     handleValidationErrors,
 ]
+
 
 export const validateParam = (paramName: string) => [
     param(paramName)
