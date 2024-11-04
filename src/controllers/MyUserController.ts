@@ -58,6 +58,8 @@ const updateCurrentUser = async (req: Request, res: Response) => {
         }
 
         await user.save()
+        await user.populate('favoriteRestaurants')
+
         res.json(user)
     } catch (error) {
         console.log(error)
