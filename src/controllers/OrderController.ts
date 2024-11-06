@@ -6,7 +6,6 @@ import Order from "../models/order"
 const STRIPE = new Stripe(process.env.STRIPE_API_KEY as string)
 const FRONTEND_URL = process.env.FRONTEND_URL as string
 const STRIPE_ENDPOINT_SECRET = process.env.STRIPE_WEBHOOK_SECRET as string
-
 const CURRENCY = "usd"
 
 type CheckoutSessionRequest = {
@@ -51,16 +50,42 @@ const stripeWebhookHandler = async (req: Request, res: Response) => {
         console.log("Error: ", error)
         return res.status(400).json({ message: `Webhook error: ${error.message}` })
     }
+
     if (event.type === "checkout.session.completed") {
-        const order = await Order.findById(event.data.object.metadata?.orderId)
-        if (!order) {
-            return res.status(404).json({ message: "Order not found" })
+        const session = event.data.object as Stripe.Checkout.Session
+
+        type SessionMetadata = {
+            restaurantId: string;
+            userId: string;
+            deliveryDetails: string;
+            cartItems: string;
+        };
+
+        const metadata = session.metadata as SessionMetadata | null;
+
+        if (metadata) {
+            const { restaurantId, userId, deliveryDetails, cartItems } = metadata;
+            try {
+                const newOrder = new Order({
+                    restaurant: restaurantId,
+                    user: userId,
+                    status: "paid",
+                    deliveryDetails: JSON.parse(deliveryDetails),
+                    cartItems: JSON.parse(cartItems),
+                    totalAmount: session.amount_total,
+                    createdAt: new Date(),
+                });
+
+                await newOrder.save();
+                console.log("Order saved successfully after payment confirmation.");
+            } catch (error) {
+                console.log("Error saving order after payment confirmation: ", error);
+                return res.status(500).json({ message: "Error saving order after payment" });
+            }
+        } else {
+            console.log("Error: Metadata is missing in the session.");
+            return res.status(400).json({ message: "Metadata missing in Stripe session" });
         }
-
-        order.totalAmount = event.data.object.amount_total
-        order.status = "paid"
-
-        await order.save()
     }
 
     res.status(200).send()
@@ -74,33 +99,25 @@ const createCheckoutSession = async (req: Request, res: Response) => {
             throw new Error("Restaurant not found")
         }
 
-        const newOrder = new Order({
-            restaurant: restaurant,
-            user: req.userId,
-            status: "placed",
-            deliveryDetails: checkoutSessionRequest.deliveryDetails,
-            cartItems: checkoutSessionRequest.cartItems,
-            createdAt: new Date()
-        })
-
         const lineItems = createLineItems(checkoutSessionRequest, restaurant.menuItems)
 
         const session = await createSession(
             lineItems,
-            newOrder._id.toString(),
             restaurant.deliveryPrice,
-            restaurant._id.toString()
+            restaurant._id.toString(),
+            req.userId,
+            JSON.stringify(checkoutSessionRequest.deliveryDetails),
+            JSON.stringify(checkoutSessionRequest.cartItems)
         )
 
         if (!session.url) {
             return res.status(500).json({ message: "Error creating stripe session" })
         }
 
-        await newOrder.save()
         res.json({ url: session.url })
     } catch (error: any) {
         console.log("Error: ", error)
-        res.status(500).json({ message: error.raw.message })
+        res.status(500).json({ message: error.raw?.message || "Internal Server Error" })
     }
 }
 
@@ -131,9 +148,11 @@ const createLineItems = (
 
 const createSession = async (
     lineItems: Stripe.Checkout.SessionCreateParams.LineItem[],
-    orderId: string,
     deliveryPrice: number,
-    restaurantId: string
+    restaurantId: string,
+    userId: string,
+    deliveryDetails: string,
+    cartItems: string
 ) => {
     const sessionData = await STRIPE.checkout.sessions.create({
         line_items: lineItems,
@@ -145,15 +164,16 @@ const createSession = async (
                     fixed_amount: {
                         amount: deliveryPrice,
                         currency: CURRENCY
-
                     }
                 }
             }
         ],
         mode: "payment",
         metadata: {
-            orderId,
-            restaurantId
+            restaurantId,
+            userId,
+            deliveryDetails,
+            cartItems
         },
         success_url: `${FRONTEND_URL}/order-status?success=true`,
         cancel_url: `${FRONTEND_URL}/details/${restaurantId}?cancelled=true`,
