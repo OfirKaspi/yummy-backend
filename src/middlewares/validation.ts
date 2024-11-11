@@ -67,20 +67,30 @@ export const validateMyRestaurantRequest = [
         .isEmpty()
         .withMessage("Cuisines array cannot be empty"),
 
-    body("menuItems")
+    body("menuCategories")
         .optional()
         .isArray()
-        .withMessage("Menu items must be an array"),
+        .withMessage("Menu categories must be an array"),
 
-    body("menuItems.*.name")
+    body("menuCategories.*.name")
         .optional()
         .notEmpty()
-        .withMessage("Menu item name is required"),
+        .withMessage("Each category must have a name"),
 
-    body("menuItems.*.price")
+    body("menuCategories.*.menuItems")
+        .optional()
+        .isArray()
+        .withMessage("Each category's menu items must be an array"),
+
+    body("menuCategories.*.menuItems.*.name")
+        .optional()
+        .notEmpty()
+        .withMessage("Each menu item must have a name"),
+
+    body("menuCategories.*.menuItems.*.price")
         .optional()
         .isFloat({ min: 0 })
-        .withMessage("Menu item price must be a positive number"),
+        .withMessage("Each menu item price must be a positive number"),
 
     handleValidationErrors,
 ]

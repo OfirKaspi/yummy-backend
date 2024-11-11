@@ -99,7 +99,9 @@ const createCheckoutSession = async (req: Request, res: Response) => {
             throw new Error("Restaurant not found")
         }
 
-        const lineItems = createLineItems(checkoutSessionRequest, restaurant.menuItems)
+        const restaurantMenuItems = restaurant.menuCategories.flatMap(category => category.menuItems)
+
+        const lineItems = createLineItems(checkoutSessionRequest, restaurantMenuItems)
 
         const session = await createSession(
             lineItems,

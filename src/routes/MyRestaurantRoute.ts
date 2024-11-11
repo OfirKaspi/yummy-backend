@@ -13,45 +13,13 @@ const upload = multer({
     limits: {
         fieldSize: 5 * 1024 * 1024 //5mb
     }
-})
+}).any()
 
-router.get(
-    "/order",
-    jwtCheck,
-    jwtParse,
-    MyRestaurantController.getMyRestaurantOrders
-)
+router.get("/", jwtCheck, jwtParse, MyRestaurantController.getMyRestaurant)
+router.post("/", upload, validateMyRestaurantRequest, jwtCheck, jwtParse, MyRestaurantController.createMyRestaurant)
+router.put("/", upload, validateMyRestaurantRequest, jwtCheck, jwtParse, MyRestaurantController.updateMyRestaurant)
 
-router.patch(
-    "/order/:orderId/status",
-    jwtCheck,
-    jwtParse,
-    MyRestaurantController.updateOrderStatus
-)
-
-router.get(
-    "/",
-    jwtCheck,
-    jwtParse,
-    MyRestaurantController.getMyRestaurant
-)
-
-router.post(
-    "/",
-    upload.single("imageFile"),
-    validateMyRestaurantRequest,
-    jwtCheck,
-    jwtParse,
-    MyRestaurantController.createMyRestaurant
-)
-
-router.put(
-    "/",
-    upload.single("imageFile"),
-    validateMyRestaurantRequest,
-    jwtCheck,
-    jwtParse,
-    MyRestaurantController.updateMyRestaurant
-)
+router.patch("/order/:orderId/status", jwtCheck, jwtParse, MyRestaurantController.updateOrderStatus)
+router.get("/order", jwtCheck, jwtParse, MyRestaurantController.getMyRestaurantOrders)
 
 export default router
