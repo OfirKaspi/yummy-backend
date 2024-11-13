@@ -37,6 +37,8 @@ const handleMenuItemsImages = async (menuCategories: MenuCategoryType[], files: 
             const fileKey = `menuItem_${item.name.replace(/\s+/g, "")}_image`
             if (files[fileKey]) {
                 item.imageUrl = await uploadImage(files[fileKey])
+            } else {
+                throw new Error(`Image for menu item ${item.name} is required`)
             }
         }
     }
