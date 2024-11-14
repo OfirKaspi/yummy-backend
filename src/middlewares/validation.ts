@@ -49,6 +49,11 @@ export const validateMyRestaurantRequest = [
         .notEmpty()
         .withMessage("Country is required"),
 
+    body("description")
+        .optional()
+        .notEmpty()
+        .withMessage("Country is required"),
+
     body("deliveryPrice")
         .optional()
         .isFloat({ min: 0 })

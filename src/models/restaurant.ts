@@ -33,6 +33,7 @@ const restaurantSchema = new mongoose.Schema({
     cuisines: [{ type: String, required: true }],
     menuCategories: { type: [menuCategorySchema], required: true },
     imageUrl: { type: String, required: true },
+    description: { type: String, required: true },
     lastUpdated: { type: Date, required: true },
 })
 
