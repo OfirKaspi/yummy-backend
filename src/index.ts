@@ -1,38 +1,21 @@
-import mongoose from "mongoose"
-import express, { Request, Response } from "express"
-import cors from "cors"
-import { v2 as cloudinary } from 'cloudinary'
-import "dotenv/config"
+// import path from 'path'
+import * as dotenv from 'dotenv'
 
-import myUserRoute from './routes/MyUserRoute'
-import myRestaurantRoute from './routes/MyRestaurantRoute'
-import restaurantRoute from './routes/RestaurantRoute'
-import orderRoute from './routes/OrderRoute'
+const envFile = `.env.${process.env.NODE_ENV || 'dev'}`
+dotenv.config({ path: envFile })
+console.log(`Using environment file: ${envFile}`)
 
-mongoose
-    .connect(process.env.MONGODB_CONNECTION_STRING as string)
+import app from './app'
+import { connectToDatabase } from './config/db'
+
+connectToDatabase()
     .then(() => console.log("Connected to database"))
+    .catch((error) => {
+        console.error("Failed to connect to database", error)
+        process.exit(1)
+    })
 
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-})
-
-const app = express()
-app.use(cors())
-app.use("/api/order/checkout/webhook", express.raw({ type: "*/*" }))
-app.use(express.json())
-
-app.get("/health", async (req: Request, res: Response) => {
-    res.send({ message: "health OK!" })
-})
-
-app.use("/api/my/user", myUserRoute)
-app.use("/api/my/restaurant", myRestaurantRoute)
-app.use("/api/restaurant", restaurantRoute)
-app.use("/api/order", orderRoute)
-
-app.listen(7000, () => {
-    console.log('Listening on port localhost:7000')
+const PORT = process.env.PORT || 7000
+app.listen(PORT, () => {
+    console.log(`Listening on port http://localhost:${PORT}`)
 })

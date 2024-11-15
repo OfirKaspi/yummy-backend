@@ -42,3 +42,4 @@ coverage/
 
 # Optional lock files
 *.lock
+data
