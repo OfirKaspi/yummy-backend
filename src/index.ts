@@ -1,7 +1,7 @@
 // import path from 'path'
 import * as dotenv from 'dotenv'
 
-const envFile = `.env.${process.env.NODE_ENV || 'dev'}`
+const envFile = process.env.NODE_ENV === 'production' ? '.env.prod' : '.env.dev';
 dotenv.config({ path: envFile })
 console.log(`Using environment file: ${envFile}`)
 
@@ -17,5 +17,5 @@ connectToDatabase()
 
 const PORT = process.env.PORT || 7000
 app.listen(PORT, () => {
-    console.log(`Listening on port http://localhost:${PORT}`)
+    console.log(`Listening on port http://${process.env.HOST}:${PORT}`)
 })
