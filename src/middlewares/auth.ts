@@ -1,7 +1,7 @@
-import { NextFunction, Request, Response } from "express";
-import { auth } from "express-oauth2-jwt-bearer";
-import jwt from "jsonwebtoken";
-import User from "../models/user";
+import { NextFunction, Request, Response } from "express"
+import { auth } from "express-oauth2-jwt-bearer"
+import jwt from "jsonwebtoken"
+import User from "../models/user"
 
 declare global {
     namespace Express {
@@ -12,13 +12,10 @@ declare global {
     }
 }
 
-console.log("AUTH0_AUDIENCE:", process.env.AUTH0_AUDIENCE);
-console.log("AUTH0_ISSUER_BASE_URL:", process.env.AUTH0_ISSUER_BASE_URL);
-
 export const jwtCheck = auth({
     audience: process.env.AUTH0_AUDIENCE,
     issuerBaseURL: process.env.AUTH0_ISSUER_BASE_URL,
-    tokenSigningAlg: 'RS256'
+    tokenSigningAlg: "RS256",
 })
 
 export const jwtParse = async (req: Request, res: Response, next: NextFunction) => {
@@ -28,17 +25,20 @@ export const jwtParse = async (req: Request, res: Response, next: NextFunction) 
         return res.status(401).json({ message: "Missing or malformed authorization header" })
     }
 
-    // Bearer asdsdfsdgxcvxcvsefewfsdf (example)
     const token = authorization.split(" ")[1]
 
     try {
         const decoded = jwt.decode(token) as jwt.JwtPayload
-        const auth0Id = decoded.sub
 
+        if (!decoded?.sub) {
+            return res.status(401).json({ message: "Invalid token" })
+        }
+
+        const auth0Id = decoded.sub
         const user = await User.findOne({ auth0Id })
 
         if (!user) {
-            return res.sendStatus(401).json({ message: "User not found" })
+            return res.status(401).json({ message: "User not found" })
         }
 
         req.auth0Id = auth0Id as string
@@ -46,6 +46,6 @@ export const jwtParse = async (req: Request, res: Response, next: NextFunction) 
         next()
     } catch (error) {
         console.error("Error parsing JWT:", error)
-        return res.sendStatus(401).json({ message: "Invalid token" })
+        return res.status(401).json({ message: "Invalid token" })
     }
 }
