@@ -10,15 +10,18 @@ const CURRENCY = "usd"
 
 type CheckoutSessionRequest = {
     cartItems: {
-        menuItemId: string
+        _id: string
         name: string
         quantity: string
+        imageUrl: string
+        price: string
     }[]
     deliveryDetails: {
         email: string
         name: string
         addressLine1: string
         city: string
+        country: string
     }
     restaurantId: string
 }
@@ -47,52 +50,43 @@ const stripeWebhookHandler = async (req: Request, res: Response) => {
             STRIPE_ENDPOINT_SECRET
         )
     } catch (error: any) {
-        console.log("Error: ", error)
+        console.log("Error verifying webhook:", error)
         return res.status(400).json({ message: `Webhook error: ${error.message}` })
     }
 
     if (event.type === "checkout.session.completed") {
         const session = event.data.object as Stripe.Checkout.Session
+        const orderId = session.metadata?.orderId
 
-        type SessionMetadata = {
-            restaurantId: string;
-            userId: string;
-            deliveryDetails: string;
-            cartItems: string;
-        };
+        if (!orderId) {
+            console.error("Error: Order ID missing in metadata.")
+            return res.status(400).json({ message: "Order ID missing in Stripe metadata." })
+        }
 
-        const metadata = session.metadata as SessionMetadata | null;
+        try {
+            const updatedOrder = await Order.findByIdAndUpdate(
+                orderId,
+                { status: "paid", totalAmount: session.amount_total },
+                { new: true }
+            )
 
-        if (metadata) {
-            const { restaurantId, userId, deliveryDetails, cartItems } = metadata;
-            try {
-                const newOrder = new Order({
-                    restaurant: restaurantId,
-                    user: userId,
-                    status: "paid",
-                    deliveryDetails: JSON.parse(deliveryDetails),
-                    cartItems: JSON.parse(cartItems),
-                    totalAmount: session.amount_total,
-                    createdAt: new Date(),
-                });
-
-                await newOrder.save();
-                console.log("Order saved successfully after payment confirmation.");
-            } catch (error) {
-                console.log("Error saving order after payment confirmation: ", error);
-                return res.status(500).json({ message: "Error saving order after payment" });
+            if (!updatedOrder) {
+                throw new Error(`Order withID ${orderId} not found.`)
             }
-        } else {
-            console.log("Error: Metadata is missing in the session.");
-            return res.status(400).json({ message: "Metadata missing in Stripe session" });
+
+            console.log("Order updated successfully:", updatedOrder)
+        } catch (error: any) {
+            console.log("Error updating order:", error.message)
+            return res.status(500).json({ message: "Error updating order after payment" })
         }
     }
-
     res.status(200).send()
 }
 
 const createCheckoutSession = async (req: Request, res: Response) => {
     try {
+        console.log("req.body", req.body)
+
         const checkoutSessionRequest: CheckoutSessionRequest = req.body
         const restaurant = await Restaurant.findById(checkoutSessionRequest.restaurantId)
         if (!restaurant) {
@@ -103,13 +97,22 @@ const createCheckoutSession = async (req: Request, res: Response) => {
 
         const lineItems = createLineItems(checkoutSessionRequest, restaurantMenuItems)
 
+        const newOrder = new Order({
+            restaurant: restaurant._id,
+            user: req.userId,
+            status: "placed",
+            deliveryDetails: checkoutSessionRequest.deliveryDetails,
+            cartItems: checkoutSessionRequest.cartItems,
+            totalAmount: lineItems.reduce((sum, item) => sum + item.price_data.unit_amount * item.quantity, 0),
+            createdAt: new Date(),
+        })
+
+        await newOrder.save()
+
         const session = await createSession(
             lineItems,
             restaurant.deliveryPrice,
-            restaurant._id.toString(),
-            req.userId,
-            JSON.stringify(checkoutSessionRequest.deliveryDetails),
-            JSON.stringify(checkoutSessionRequest.cartItems)
+            newOrder._id.toString()
         )
 
         if (!session.url) {
@@ -128,11 +131,11 @@ const createLineItems = (
     menuItems: MenuItemType[]
 ) => {
     const lineItems = checkoutSessionRequest.cartItems.map((cartItem) => {
-        const menuItem = menuItems.find((item) => item._id.toString() == cartItem.menuItemId.toString())
+        const menuItem = menuItems.find((item) => item._id.toString() == cartItem._id.toString())
         if (!menuItem) {
-            throw new Error(`Menu item not found: ${cartItem.menuItemId}`)
+            throw new Error(`Menu item not found: ${cartItem._id}`)
         }
-        const line_item: Stripe.Checkout.SessionCreateParams.LineItem = {
+        return {
             price_data: {
                 currency: CURRENCY,
                 unit_amount: menuItem.price,
@@ -142,7 +145,6 @@ const createLineItems = (
             },
             quantity: parseInt(cartItem.quantity)
         }
-        return line_item
     })
 
     return lineItems
@@ -151,10 +153,7 @@ const createLineItems = (
 const createSession = async (
     lineItems: Stripe.Checkout.SessionCreateParams.LineItem[],
     deliveryPrice: number,
-    restaurantId: string,
-    userId: string,
-    deliveryDetails: string,
-    cartItems: string
+    orderId: string
 ) => {
     const sessionData = await STRIPE.checkout.sessions.create({
         line_items: lineItems,
@@ -172,13 +171,10 @@ const createSession = async (
         ],
         mode: "payment",
         metadata: {
-            restaurantId,
-            userId,
-            deliveryDetails,
-            cartItems
+            orderId
         },
         success_url: `${FRONTEND_URL}/order-status?success=true`,
-        cancel_url: `${FRONTEND_URL}/details/${restaurantId}?cancelled=true`,
+        cancel_url: `${FRONTEND_URL}/order-status?cancelled=true`,
     })
     return sessionData
 }

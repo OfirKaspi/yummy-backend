@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from "mongoose"
 
 const orderSchema = new mongoose.Schema({
     restaurant: { type: mongoose.Schema.Types.ObjectId, ref: "Restaurant" },
@@ -12,10 +12,11 @@ const orderSchema = new mongoose.Schema({
     },
     cartItems: [
         {
-            menuItemId: { type: String, required: true },
-            quantity: { type: Number, required: true },
+            _id: { type: String, required: true },
             name: { type: String, required: true },
             price: { type: String, required: true },
+            imageUrl: { type: String, required: true },
+            quantity: { type: Number, required: true },
         }
     ],
     totalAmount: Number,
