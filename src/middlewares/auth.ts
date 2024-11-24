@@ -21,8 +21,8 @@ export const jwtCheck = auth({
 export const jwtParse = async (req: Request, res: Response, next: NextFunction) => {
     const { authorization } = req.headers
 
-    if (!authorization || !authorization.startsWith("Bearer")) {
-        return res.status(401).json({ message: "Missing or malformed authorization header" })
+    if (!authorization?.startsWith("Bearer")) {
+        return res.status(401).json({ message: "Unauthorized: Missing token" })
     }
 
     const token = authorization.split(" ")[1]
@@ -34,18 +34,10 @@ export const jwtParse = async (req: Request, res: Response, next: NextFunction) 
             return res.status(401).json({ message: "Invalid token" })
         }
 
-        const auth0Id = decoded.sub
-        const user = await User.findOne({ auth0Id })
-
-        if (!user) {
-            return res.status(401).json({ message: "User not found" })
-        }
-
-        req.auth0Id = auth0Id as string
-        req.userId = user._id.toString()
+        req.auth0Id = decoded.sub
         next()
     } catch (error) {
         console.error("Error parsing JWT:", error)
-        return res.status(401).json({ message: "Invalid token" })
+        return res.status(500).json({ message: "Server error while parsing token" })
     }
 }
